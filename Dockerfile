@@ -1,26 +1,21 @@
-FROM alpine
+# 使用官方 Alpine 镜像
+FROM alpine:latest
 
-ARG ARCH
+# 安装证书和时区支持
+RUN apk --no-cache add ca-certificates tzdata \
+    && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && echo "Asia/Shanghai" > /etc/timezone
 
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories && \
-	apk update --no-cache && apk --no-cache add curl bash sqlite
-
-ENV TZ Asia/Shanghai
-
+# 工作目录
 WORKDIR /app
-COPY ./frp-panel-${ARCH} /app/frp-panel
-COPY ./etc /app/etc
 
-RUN ln -sf /app/etc/Shanghai /etc/localtime && mv /app/etc/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt && mkdir -p /data
+# 从 GitHub Releases 下载官方二进制（v0.5.0，amd64）
+RUN wget -O frp-panel https://github.com/vaalacat/frp-panel/releases/download/v0.5.0/frp-panel-linux-amd64 \
+    && chmod +x frp-panel
 
-# web port
-EXPOSE 9000
+# 数据卷和端口
+VOLUME ["/data"]
+EXPOSE 7000
 
-# rpc port
-EXPOSE 9001
-
-ENV DB_DSN /data/data.db?_pragma=journal_mode(WAL)
-
-ENTRYPOINT [ "/app/frp-panel" ]
-
-CMD [ "master" ]
+# 启动命令由外部传入（如 "master"）
+ENTRYPOINT ["./frp-panel"]
